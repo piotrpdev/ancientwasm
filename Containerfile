@@ -25,8 +25,8 @@ WORKDIR /usr/share/
 RUN git clone --depth=1 --branch main --single-branch https://github.com/emscripten-core/emsdk.git
 
 WORKDIR /usr/share/emsdk
-RUN ./emsdk install 3.1.61
-RUN ./emsdk activate 3.1.61
+RUN ./emsdk install 3.1.74
+RUN ./emsdk activate 3.1.74
 ENV PATH="${PATH}:/usr/share/emsdk:/usr/share/emsdk/upstream/emscripten"
 ENV EMSDK="/usr/share/emsdk"
 
@@ -91,3 +91,11 @@ RUN rm -rf /usr/src/gmp-6.3.0 /usr/src/gnucobol-3.2 /usr/src/libf2c
 WORKDIR /root
 ADD demo1 /root/demo1
 ADD demo2 /root/demo2
+
+# Build both demos to make sure everything works
+WORKDIR /root/demo1
+RUN source ~/.bashrc && ./demo.sh
+
+WORKDIR /root/demo2
+RUN source ~/.bashrc && ./demo.sh
+
