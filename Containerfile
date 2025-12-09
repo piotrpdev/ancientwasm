@@ -6,7 +6,7 @@ ENV SHELL=/bin/bash
 # Download dependencies
 RUN echo $'fastestmirror=True\n\
 max_parallel_downloads=20' >> /etc/dnf/dnf.conf
-RUN dnf -y update && dnf -y install lzip xz gcc make f2c gnucobol git unzip python
+RUN dnf -y update && dnf -y install lzip xz gcc libatomic make f2c gnucobol git unzip python
 
 WORKDIR /usr/src
 RUN urls="\
@@ -25,8 +25,8 @@ WORKDIR /usr/share/
 RUN git clone --depth=1 --branch main --single-branch https://github.com/emscripten-core/emsdk.git
 
 WORKDIR /usr/share/emsdk
-RUN ./emsdk install 4.0.6 # >4.0.6 causes linking issues
-RUN ./emsdk activate 4.0.6
+RUN ./emsdk install 4.0.21
+RUN ./emsdk activate 4.0.21
 ENV PATH="${PATH}:/usr/share/emsdk:/usr/share/emsdk/upstream/emscripten"
 ENV EMSDK="/usr/share/emsdk"
 
