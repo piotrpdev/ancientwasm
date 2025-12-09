@@ -25,8 +25,8 @@ WORKDIR /usr/share/
 RUN git clone --depth=1 --branch main --single-branch https://github.com/emscripten-core/emsdk.git
 
 WORKDIR /usr/share/emsdk
-RUN ./emsdk install 3.1.74
-RUN ./emsdk activate 3.1.74
+RUN ./emsdk install 4.0.6 # >4.0.6 causes linking issues
+RUN ./emsdk activate 4.0.6
 ENV PATH="${PATH}:/usr/share/emsdk:/usr/share/emsdk/upstream/emscripten"
 ENV EMSDK="/usr/share/emsdk"
 
