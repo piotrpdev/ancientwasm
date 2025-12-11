@@ -11,12 +11,11 @@ ENV SHELL=/bin/bash
 RUN echo $'fastestmirror=True\n\
 max_parallel_downloads=20' >> /etc/dnf/dnf.conf && \
     dnf -y update && \
-    dnf -y install lzip xz gcc libatomic make f2c gnucobol git unzip python
+    dnf -y install lzip xz gcc libatomic make gnucobol git python
 
 RUN urls="\
 https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz \
 https://phoenixnap.dl.sourceforge.net/project/gnucobol/gnucobol/${GNUCOBOL_VERSION}/gnucobol-${GNUCOBOL_VERSION}.tar.lz \
-https://www.netlib.org/f2c/libf2c.zip \
 " && \
     for url in $urls; do \
         echo "fetching $url"; \
@@ -60,25 +59,8 @@ RUN source /root/.bashrc && \
     cp /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob/*.def /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
     cp /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob/.libs/* /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/
 
-# Build and install libf2c
-RUN mkdir /usr/src/libf2c && \
-    cd /usr/src/libf2c && \
-    unzip /usr/src/libf2c.zip && \
-    cp /usr/src/libf2c/makefile.u /usr/src/libf2c/makefile && \
-    sed -i 's/CC = cc/CC = emcc/g' /usr/src/libf2c/makefile && \
-    sed -i 's/-DSkip_f2c_Undefs//g' /usr/src/libf2c/makefile && \
-    sed -i 's/ld -r -x -o/#ld -r -x -o/g' /usr/src/libf2c/makefile && \
-    sed -i 's/mv \$\*\.xxx \$\*\.o/#mv \$\*\.xxx \$\*\.o/g' /usr/src/libf2c/makefile && \
-    sed -i 's/\.\/a\.out/node a.out.js/g' /usr/src/libf2c/makefile && \
-    sed -i 's/rm -f a\.out/rm -f a\.out\.js a\.out\.wasm/g' /usr/src/libf2c/makefile && \
-    sed -i 's/CFLAGS = -O/CFLAGS = /g' /usr/src/libf2c/makefile && \
-    source /root/.bashrc && \
-    emmake make -j`nproc` && \
-    cp /usr/src/libf2c/*.a /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/ && \
-    yes | cp -f /usr/src/libf2c/*.h /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/
-
 # Clean up
-RUN rm -rf /usr/src/gmp-${GMP_VERSION} /usr/src/gnucobol-${GNUCOBOL_VERSION} /usr/src/libf2c
+RUN rm -rf /usr/src/gmp-${GMP_VERSION} /usr/src/gnucobol-${GNUCOBOL_VERSION}
 
 # Include demos
 ADD demo1 /root/demo1
