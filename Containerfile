@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.licenses=MIT
 ARG EMSDK_VERSION=4.0.21
 ARG GMP_VERSION=6.3.0
 ARG GNUCOBOL_VERSION=3.2
-
+ARG COBDOMINATE_SHA1=2daa7e2593415171aaf2708b0e27c6bf5a68b94b
 
 SHELL ["/bin/bash", "-c"]
 ENV SHELL=/bin/bash
@@ -14,7 +14,7 @@ ENV SHELL=/bin/bash
 RUN echo $'fastestmirror=True\n\
 max_parallel_downloads=20' >> /etc/dnf/dnf.conf && \
     dnf -y update && \
-    dnf -y install lzip xz gcc libatomic make gnucobol git python
+    dnf -y install lzip xz gcc libatomic make gnucobol git python ctags
 
 RUN urls="\
 https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz \
@@ -72,3 +72,16 @@ RUN source /root/.bashrc && \
     ./demo.sh && \
     cd /root/demos/demo2 && \
     ./demo.sh
+
+# Build and install CobDOMinate, then build the demo to make sure everything works
+RUN source /root/.bashrc && \
+    git -C /usr/src clone --branch main --single-branch https://github.com/BalakeKarbon/CobDOMinate.git && \
+    cd /usr/src/CobDOMinate && \
+    git reset --hard $COBDOMINATE_SHA1 && \
+    sed -i -e 's,LIB_INSTALL_DIR =.*$,LIB_INSTALL_DIR = /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/,g' /usr/src/CobDOMinate/Makefile && \
+    sed -i -e 's/emcc/emcc -Wno-deprecated-non-prototype/g' /usr/src/CobDOMinate/Makefile && \
+    sed -i -e 's/_malloc,//g' /usr/src/CobDOMinate/Makefile && \
+    sed -i -e 's/EXPORTED_FUNCTIONS=/EXPORTED_FUNCTIONS=_malloc,/g' /usr/src/CobDOMinate/Makefile && \
+    emmake make -j`nproc` && \
+    emmake make install -j`nproc` && \
+    emmake make example -j`nproc`
