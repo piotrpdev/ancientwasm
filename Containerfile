@@ -1,13 +1,16 @@
 FROM fedora:43
 
+LABEL org.opencontainers.image.source=https://github.com/piotrpdev/ancientwasm
+LABEL org.opencontainers.image.licenses=MIT
+
 ARG EMSDK_VERSION=4.0.21
 ARG GMP_VERSION=6.3.0
 ARG GNUCOBOL_VERSION=3.2
 
+
 SHELL ["/bin/bash", "-c"]
 ENV SHELL=/bin/bash
 
-# Download dependencies
 RUN echo $'fastestmirror=True\n\
 max_parallel_downloads=20' >> /etc/dnf/dnf.conf && \
     dnf -y update && \
@@ -62,15 +65,10 @@ RUN source /root/.bashrc && \
 # Clean up
 RUN rm -rf /usr/src/gmp-${GMP_VERSION} /usr/src/gnucobol-${GNUCOBOL_VERSION}
 
-# Include demos
-ADD demo1 /root/demo1
-ADD demo2 /root/demo2
-
 # Build both demos to make sure everything works
+ADD demos /root/demos
 RUN source /root/.bashrc && \
-    cd /root/demo1 && \
+    cd /root/demos/demo1 && \
     ./demo.sh && \
-    cd /root/demo2 && \
+    cd /root/demos/demo2 && \
     ./demo.sh
-
-WORKDIR /root
