@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.licenses=MIT
 
 ARG EMSDK_VERSION=4.0.21
 ARG GMP_VERSION=6.3.0
-ARG GNUCOBOL_VERSION=3.2
+ARG GNUCOBOL_NIGHTLY_VERSION=4.0-early-dev
 ARG COBDOMINATE_SHA1=2daa7e2593415171aaf2708b0e27c6bf5a68b94b
 
 SHELL ["/bin/bash", "-c"]
@@ -14,11 +14,11 @@ ENV SHELL=/bin/bash
 RUN echo $'fastestmirror=True\n\
 max_parallel_downloads=20' >> /etc/dnf/dnf.conf && \
     dnf -y update && \
-    dnf -y install lzip xz gcc libatomic make gnucobol git python ctags
+    dnf -y install xz gcc glibc-devel gmp-devel libatomic make git python ctags diffutils
 
 RUN urls="\
 https://gmplib.org/download/gmp/gmp-${GMP_VERSION}.tar.xz \
-https://phoenixnap.dl.sourceforge.net/project/gnucobol/gnucobol/${GNUCOBOL_VERSION}/gnucobol-${GNUCOBOL_VERSION}.tar.lz \
+https://ci.appveyor.com/api/projects/GitMensch/gnucobol-trunk/artifacts/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}.tar.xz?job=Image:%20Ubuntu2204 \
 " && \
     for url in $urls; do \
         echo "fetching $url"; \
@@ -48,30 +48,43 @@ RUN source /root/.bashrc && \
     cp /usr/src/gmp-${GMP_VERSION}/build/.libs/* /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/
 
 # Build and install GnuCOBOL
+# TODO: Find out how to change COB_CONFIG_DIR during install instead of needing env var
+RUN cd /usr/src && \
+    tar -xf /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}.tar.xz -C /usr/src && \
+    cd /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION} && \
+    echo "/usr/local/lib" > /etc/ld.so.conf.d/local.conf && \
+    echo -e "\nldconfig" >> /root/.bashrc && \
+    echo -e "\nexport COB_CONFIG_DIR=\"/usr/local/share/gnucobol/config/\"" >> /root/.bashrc && \
+    /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/configure CFLAGS='-std=gnu17 -fPIC -Wno-deprecated-non-prototype' --without-db && \
+    make -j`nproc` && \
+    make install -j`nproc`
+
 RUN source /root/.bashrc && \
     cd /usr/src && \
-    lzip -d /usr/src/gnucobol-${GNUCOBOL_VERSION}.tar.lz && \
-    tar -xf /usr/src/gnucobol-${GNUCOBOL_VERSION}.tar -C /usr/src && \
-    cd /usr/src/gnucobol-${GNUCOBOL_VERSION} && \
-    emconfigure /usr/src/gnucobol-${GNUCOBOL_VERSION}/configure --without-db --host none && \
-    cd /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob && \
+    rm -rf /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION} && \
+    tar -xf /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}.tar.xz -C /usr/src && \
+    cd /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION} && \
+    emconfigure /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/configure --without-db --host none && \
+    cd /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/libcob && \
     emmake make -j`nproc` && \
-    cp -f /usr/src/gnucobol-${GNUCOBOL_VERSION}/*.h /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/ && \
+    emmake make install -j`nproc` && \
+    cp -f /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/*.h /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/ && \
     mkdir /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
-    cp /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob/*.h /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
-    cp /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob/*.def /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
-    cp /usr/src/gnucobol-${GNUCOBOL_VERSION}/libcob/.libs/* /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/
+    cp /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/libcob/*.h /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
+    cp /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/libcob/*.def /usr/share/emsdk/upstream/emscripten/cache/sysroot/include/libcob && \
+    cp /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}/libcob/.libs/* /usr/share/emsdk/upstream/emscripten/cache/sysroot/lib/wasm32-emscripten/
 
 # Clean up
-RUN rm -rf /usr/src/gmp-${GMP_VERSION} /usr/src/gnucobol-${GNUCOBOL_VERSION}
+RUN rm -rf /usr/src/gmp-${GMP_VERSION} /usr/src/gnucobol-${GNUCOBOL_NIGHTLY_VERSION}
 
 # Build both demos to make sure everything works
 ADD demos /root/demos
 RUN source /root/.bashrc && \
     cd /root/demos/demo1 && \
-    ./demo.sh && \
+    ./demo.sh ; \
     cd /root/demos/demo2 && \
-    ./demo.sh
+    ./demo.sh ; \
+    exit 0
 
 # Build and install CobDOMinate, then build the demo to make sure everything works
 RUN source /root/.bashrc && \
